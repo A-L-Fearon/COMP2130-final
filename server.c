@@ -42,13 +42,14 @@ int main(int argc, char *argv[])
       
     //a message
     char *message = "Welcome to C chat\r\n";
+    char *menu_options = "#1 - Group Chat\n2 - Peer to Peer\n";
   
     //initialise all client_socket[] to 0 so not checked
     for (i = 0; i < max_clients; i++) 
     {
         client_socket[i] = 0;
         clients[i].socket = 0;
-        clients[i].alias = "user";
+        // clients[i].alias = "user";
     }
       
     //create a master socket
@@ -139,13 +140,13 @@ int main(int argc, char *argv[])
 
             sprintf(prt, "%d", ntohs(address.sin_port));
 
-            //send new connection greeting message
-            if( send(new_socket, prt, strlen(message), 0) != strlen(message) ) 
+            if ( read(new_socket, buffer, (BUF_SIZE - 1)) < 0)
             {
-                perror("send");
+                printf("Error reading from socket\n");
+                exit(0);
             }
-              
-            puts("Welcome message sent successfully");
+
+            char *welcome_message = "Welcome to C Chat ";
               
             //add new socket to array of sockets
             for (i = 0; i < max_clients; i++) 
@@ -157,9 +158,20 @@ int main(int argc, char *argv[])
 
                     clients[i].socket = new_socket;
                     clients[i].port_no = *prt;
+                    clients[i].alias = buffer;
                     
-                    printf("Adding to list of sockets as %d\n" , i);
-                     
+                    printf("Adding %s to list of sockets as %d\n", clients[i].alias, i);
+
+
+                    // strcat(welcome_message, buffer);
+                    // puts("herrrre");
+
+                    //send new connection greeting message
+                    if( send(new_socket, buffer, strlen(buffer), 0) != strlen(buffer) ) 
+                    {
+                        perror("send");
+                    }
+
                     break;
                 }
             }
@@ -172,6 +184,8 @@ int main(int argc, char *argv[])
               
             if (FD_ISSET( sd , &readfds)) 
             {
+                bzero(buffer, BUF_SIZE); // resets buffer
+
                 //Check if it was for closing , and also read the incoming message
                 if ((valread = read( sd , buffer, 1024)) == 0)
                 {
@@ -183,24 +197,39 @@ int main(int argc, char *argv[])
                     //Close the socket and mark as 0 in list for reuse
                     // close( sd );
                     client_socket[i] = 0;
-
                     clients[i].port_no = 0;
                 }
                   
                 //Echo back the message that came in
                 else
                 {
-
+                    int j;
                     //set the string terminating NULL byte on the end of the data read
                     buffer[valread] = '\0';
                     send(sd , buffer , strlen(buffer) , 0 );
                     puts(buffer);
-                    // if (strncmp(valread, "*", 1) == 0)
+
+                    // if (buffer[0] == '#') // set username and configurations
                     // {
-                    //     for (i = 0; i < MAX_CLIENTS; i++)
+                    //     if (buffer[1] == '0')
                     //     {
-                    //         if (clients[i].socket == sd)
-                    //             send(client_socket[i], buffer, strlen(buffer), 0);
+                    //         int count = 0;
+
+                    //         for (j = 2; j < strlen(buffer); j++)
+                    //         {
+                    //             clients[i].alias[count] = buffer[j];   
+                    //         }
+
+                    //         if (strcmp(clients[i].alias, "user") == 0)
+                    //         {
+                    //             char user_count[2];
+                    //             sprintf(user_count, "%d",i);
+                    //             strcat(clients[i].alias, user_count);
+                    //         }
+
+                    //         // the user is now connected, return their username
+                    //         printf("%s", clients[i].alias);    
+                    //         send(clients[i].socket, clients[i].alias , strlen(clients[i].alias ), 0);
                     //     }
                     // }
                 }

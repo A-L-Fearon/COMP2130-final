@@ -22,6 +22,7 @@ struct client {
     char *alias;
     int group;
     int port_no;
+    int available;
 };
 
 
@@ -49,6 +50,7 @@ int main(int argc, char *argv[])
     {
         client_socket[i] = 0;
         clients[i].socket = 0;
+        clients[i].available = 0;
         // clients[i].alias = "user";
     }
       
@@ -254,6 +256,22 @@ int main(int argc, char *argv[])
                                 write(sd, client_list, sizeof(client_list));
                             }
                             
+                        }
+                        else if (buffer[2] == '+')
+                        {
+                            int j, peerNum = 0;
+                            char num[4];
+
+                            for (j = 2; j < strlen(buffer); j++)
+                            {
+                                if (buffer[j] != '@');
+                                {
+                                    num[peerNum] = buffer[j];
+                                    peerNum++;
+                                }
+                                
+                                // send request to connect to client
+                            }
                         }
                     }
                     else if (buffer[0] == '#') // broadcast

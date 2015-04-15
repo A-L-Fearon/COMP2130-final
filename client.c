@@ -47,7 +47,10 @@ void main(int argc, char *argv[])
     struct hostent *server;
 
     char buffer[BUFFER_SIZE];
+    char recv[BUFFER_SIZE];
     char data[BUFFER_SIZE];
+
+    char bytes_recv[BUFFER_SIZE];
 
     int opt = TRUE, master_socket , addrlen , new_socket, activity, i , valread , sd, max_sd;
     int sockfd, portno, n, initial = 1, rc;
@@ -111,31 +114,37 @@ void main(int argc, char *argv[])
         exit(0);
     }
 
-    if (read(sender.sockfd, buffer, (BUFFER_SIZE - 1)) < 0)
+    if (read(sender.sockfd, recv, (BUFFER_SIZE - 1)) < 0)
     {
         printf("Error reading from socket\n");
         exit(0);
     }
 
     sender.alias = buffer;
-    puts(buffer);
+    puts(recv);
     
-    // clear the socket set
-    FD_ZERO(&readfds);
-
-    // add read socket to set
-    FD_SET(sender.sockfd, &readfds);
-    FD_SET(0, &readfds);
+    
 
     bzero(buffer, BUFFER_SIZE); // resets buffer          
     bzero(data, BUFFER_SIZE); // resets buffer
 
     while (TRUE)
     {
+    // clear the socket set
+        FD_ZERO(&readfds);
+
+        // add read socket to set
+        FD_SET(sender.sockfd, &readfds);
+        FD_SET(0, &readfds);
+        
         bzero(buffer, BUFFER_SIZE); // resets buffer          
         bzero(data, BUFFER_SIZE); // resets buffer
 
-        if (select(sender.sockfd, &readfds, NULL, NULL, NULL) < 0) 
+        activity = select( sender.sockfd + 1, &readfds , NULL , NULL , NULL);
+
+        printf("%d \n", activity);
+
+        if (select(sender.sockfd + 1, &readfds, NULL, NULL, NULL) < 0) 
         {
             printf("select error");
             continue;
@@ -143,12 +152,17 @@ void main(int argc, char *argv[])
 
         if (FD_ISSET(sender.sockfd, &readfds)) // receiving incomming data
         {
-            if (read(sender.sockfd, buffer, (BUFFER_SIZE - 1)) < 0)
-            {
-                printf("%s\n", buffer);
-            }
-        }
+            //bytes_recv = recv(sender.sockfd, recv, 100, 0);
 
+            //printf("%s test \n", bytes_recv);
+
+            if (read(sender.sockfd, recv, 1024))
+            {
+                printf("%s\n", recv);
+            }
+            //printf("%s\n here \n", recv);
+        }
+        //printf("%s fewfwe \n ", &readfds);
         if (FD_ISSET(0, &readfds)) // handles user input
         {
             bzero(buffer, BUFFER_SIZE); // resets buffer          
@@ -162,7 +176,7 @@ void main(int argc, char *argv[])
                 exit(0);
             }
 
-            printf("%s\n", buffer);
+            //printf("%s\n", buffer);
 
         }
 

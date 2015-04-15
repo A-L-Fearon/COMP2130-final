@@ -13,6 +13,7 @@
 #define FALSE  		0
 #define PORT 		60000
 #define BUF_SIZE	1024
+#define BUFFER_SIZE 1024
 #define MAX_CLIENTS 30
 #define GRP_WORK    2
 #define GRP_FUN     3
@@ -95,6 +96,8 @@ int main(int argc, char *argv[])
         //clear the socket set
         FD_ZERO(&readfds);
   
+        bzero(buffer, BUFFER_SIZE); 
+
         //add master socket to set
         FD_SET(master_socket, &readfds);
         max_sd = master_socket;
@@ -206,9 +209,18 @@ int main(int argc, char *argv[])
                     int j;
                     //set the string terminating NULL byte on the end of the data read
                     buffer[valread] = '\0';
-                    send(sd , buffer , strlen(buffer) , 0 );
-                    puts(buffer);
 
+                    //if ((valread = read( sd , buffer, 1024)) == 'hello'){
+                    //if(strcmp(buffer,"hello") == 0){
+                    //	send(sd, "worked", strlen(buffer) , 0 );
+                    //}
+                    int test = (strcmp(buffer,"hello"));
+                    if(send(sd , buffer , strlen(buffer), 0 ) != strlen(buffer)){
+                    	puts("failed");
+                    }
+                    puts(buffer);
+                    //send(sd , buffer , strlen(buffer) , 0 );
+                    //puts("hey");
                     // if (buffer[0] == '#') // set username and configurations
                     // {
                     //     if (buffer[1] == '0')

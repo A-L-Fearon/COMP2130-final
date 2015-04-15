@@ -17,11 +17,11 @@
 #define TRUE        1
 #define FALSE       0
 #define SERVER_PORT "60000"
-#define PEER_PORT   "50000"
 #define MAX_CLIENTS 30
 #define GRP_WORK    2
 #define GRP_FUN     3
 
+int randint(int max);
 // 1 - main menu
 // 2 - 
 
@@ -31,6 +31,7 @@ struct client {
     int portno;
     int listening;
     int sockfd;
+    int peer;
 };
 
 struct client sender; // this client
@@ -56,8 +57,9 @@ void main(int argc, char *argv[])
 
     char bytes_recv[BUFFER_SIZE];
 
-    int opt = TRUE, master_socket , addrlen , new_socket, activity, i , valread , sd, max_sd;
-    int sockfd, portno, n, initial = 1, rc, peer_socket;
+    int opt = TRUE, addrlen , new_socket, activity, i , valread , sd, max_sd;
+    int sockfd, portno, n, initial = 1, rc;
+    int peer_socket = -1; // file descriptor for peer to peer connection
 
     if ((server = gethostbyname("localhost")) == NULL)
     {   
@@ -67,9 +69,10 @@ void main(int argc, char *argv[])
 
     sender.listening = 0; // currently this user is not activelty listening
     sender.alias = "user";
-    sender.portno = 0;
+    sender.portno = -1;
     sender.groups[0] = 0;
     sender.groups[1] = 0;
+    sender.peer = -1;
 
     portno = atoi(SERVER_PORT);
 
@@ -150,6 +153,8 @@ void main(int argc, char *argv[])
 
     while (TRUE)
     {
+        int max_fd = sender.sockfd;
+
         // printf("user@user$ ");
         // fflush(stdout);
 
@@ -159,6 +164,14 @@ void main(int argc, char *argv[])
         // add read socket to set
         FD_SET(sender.sockfd, &readfds);
         FD_SET(0, &readfds);
+
+        if (peer_socket != -1)
+        {
+            FD_SET(peer_socket, &readfds);
+
+            if (peer_socket > sender.sockfd)
+                max_fd = peer_socket;
+        }
         
         bzero(buffer, BUFFER_SIZE); // resets buffer          
         bzero(data, BUFFER_SIZE); // resets buffer
@@ -166,7 +179,7 @@ void main(int argc, char *argv[])
         // printf("Enter a command: ");
 
 
-        activity = select( sender.sockfd + 1, &readfds , NULL , NULL , NULL);
+        activity = select( max_fd + 1, &readfds , NULL , NULL , NULL);
 
         ///printf("%d \n", activity);
 
@@ -176,11 +189,22 @@ void main(int argc, char *argv[])
             // continue;
         }
 
+        if (FD_ISSET(peer_socket, &readfds))
+        {
+            if (read(peer_socket, buffer, (BUFFER_SIZE - 1)) < 0)
+            {
+                printf("Error read client message\n");
+                continue;
+            }
+            puts(buffer);
+        }
+
         if (FD_ISSET(sender.sockfd, &readfds)) // receiving incomming data
         {
             if (read(sender.sockfd, buffer, (BUFFER_SIZE - 1)) < 0)
             {
                 printf("Errror");
+                continue;
             }
             if (buffer[0] == '@') // someone is initiating a connection
             {
@@ -214,6 +238,8 @@ void main(int argc, char *argv[])
                 }
                 else if (buffer[1] == '+')
                 {
+                    strtok(buffer, "\n");
+
                     printf("Attempting to create session....\n");
 
                     if ((peer_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
@@ -222,21 +248,42 @@ void main(int argc, char *argv[])
                         continue;
                     }
 
+                    // port #'s will range from 60000 ~ 700000
+                    sender.portno = randint(1000) + 60000;
+
                     // creates tcp connection
                     address.sin_family = AF_INET;
-                    address.serv_addr.s_addr = INADDR_ANY;
-                    address.sin_port = atoi(PEER_PORT);
+                    address.sin_addr.s_addr = INADDR_ANY;
+                    address.sin_port = sender.portno;
 
                     // bind socket to local host, port 50000
-                    if (bind(master_socket, (struct sockaddr *)&address, sizeof(address))<0) 
+                    if (bind(peer_socket, (struct sockaddr *)&address, sizeof(address))<0) 
                     {
                         perror("bind failed");
                         exit(EXIT_FAILURE);
                     }
 
-                    strcat(buffer, "|"); //
-                    // strcat(buffer, portno) // attach your port number
+                    printf("Peer sock %d\nListening for peer on port %d\n", peer_socket, sender.portno);
 
+                    if (listen(peer_socket, 2) < 0)
+                    {
+                        printf("Error listening\n");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    puts("Here");
+
+                    char peer_port[10];
+
+                    sprintf(peer_port, "%d", sender.portno);
+
+                    addrlen = sizeof(address);
+                    puts("Now waitng for connections ...\n");
+
+                    strcat(buffer, "|"); // add delimiter
+                    strcat(buffer, peer_port); // attach your port number
+                    strcat(buffer, "|"); // attach delimiter
+                    puts(buffer);
 
                     write(sender.sockfd, buffer, strlen(buffer));
                 }
@@ -249,63 +296,7 @@ void main(int argc, char *argv[])
             {
                 write(sender.sockfd, buffer, strlen(buffer));
             }
-
-            // if (strncmp(buffer, "@", 1) == 0) // peer to peer calls
-            // {
-            //     if (strlen(buffer) == 3) // REQUESTS THE  list of avaliable peers
-            //     {
-            //         write(sender.sockfd, buffer, strlen(buffer));
-            //     }
-
-            // }
-            // else
-            // {
-            //     write(sender.sockfd, buffer, strlen(buffer));
-            // }
         }
-
-        // if (FD_ISSET(0, &readfds)) // handles user input
-        // {
-        //     bzero(buffer, BUFFER_SIZE); // resets buffer 
-
-        //     fgets(buffer, (BUFFER_SIZE - 1), stdin);
-
-        //     int s = strlen(buffer);
-        //     // printf("CLient %s length(%d)\n", buffer, s);
-        //     if (strncmp(buffer, "#", 1) == 0) // group calls
-        //     {
-        //         if (strlen(buffer) == 1)
-        //         {
-        //             printf("BROADCAST TO GROUPS");
-
-
-        //         }
-
-        //     }
-
-        //     if (strncmp(buffer, "@@", 1) == 0) // peer to peer calls
-        //     {
-        //         if (strlen(buffer) == 3) // REQUESTS THE  list of avaliable peers
-        //         {
-        //             write(sender.sockfd, buffer, strlen(buffer));
-        //         }
-
-        //     }
-        //     else
-        //     {
-        //         write(sender.sockfd, buffer, strlen(buffer));
-        //     }
-        //     continue;
-
-        //     // if (write(sender.sockfd, buffer, strlen(buffer)) < 0)
-        //     // {
-        //     //     fprintf(stderr, "Error creating alias\n" );
-        //     //     exit(0);
-        //     // }
-
-        //     // printf("%s\n", buffer);
-
-        // }
 
 
     } // end of connections with client
@@ -313,107 +304,7 @@ void main(int argc, char *argv[])
     close(sender.sockfd);
 }
 
-//     while(TRUE)
-//     {   
-        
-        
-//         activity = select(sender.sockfd, &readfds, NULL, NULL, NULL);
-
-//         if ((activity < 0) && (errno!=EINTR))
-//         {
-//             printf("select error");
-//         }
-
-//         if (FD_ISSET(sender.sockfd, &readfds)) // in comming data
-//         {
-//             printf("%d", sender.sockfd);
-
-//             if (read(sender.sockfd, buffer, (BUFFER_SIZE - 1)) < 0)
-//             {
-//                 fprintf(stderr, "Error reading from socket");
-//             }
-            
-   
-//             // bzero(buffer, BUFFER_SIZE); // resets buffer
-//         }
-//         else // send data
-//         {
-//             puts("a");
-//             // char data[BUFFER_SIZE];
-//             // puts("here");
-//             // switch(sender.write)
-//             // {
-//             //     case 0:
-//             //         bzero(buffer, BUFFER_SIZE); // resets buffer
-//             //         fgets(buffer, (BUFFER_SIZE - 1), stdin); // captures user input
-
-//             //         data[0] = '#';
-//             //         data[1] = '0'; 
-                    
-//             //         strcat(data, buffer);
-
-//             //         if (write(sender.sockfd, data, strlen(data)) < 0)
-//             //         {
-//             //             fprintf(stderr, "Error writing to socket\n");
-//             //             exit(0);       
-//             //         }
-//             //         break;
-//             //     case 1:
-
-//             //         break;
-//             //     case 2:
-
-//             //         break;
-//             //     case 3:
-
-//             //         break;
-//             // }
-//         }
-
-//         if (FD_ISSET(0, &readfds)) // stdin
-//         {
-//             char data[BUFFER_SIZE];
-//             bzero(buffer, BUFFER_SIZE); // resets buffer
-
-//             switch(sender.write)
-//             {
-//                 case 0:
-//                     fgets(buffer, (BUFFER_SIZE - 1), stdin); // captures user input
-                    
-//                     data[0] = '#';
-//                     data[1] = '0'; 
-                    
-//                     strcat(data, buffer);
-
-//                     if (write(sender.sockfd, data, strlen(data)) < 0)
-//                     {
-//                         fprintf(stderr, "Error writing to socket\n");
-//                         exit(0);       
-//                     }
-//                     break;
-//                 case 1:
-//                     printf("fefefegeg\n");
-//                     break;
-
-//                 case 2:
-//                     printf("appkpommim\n");
-//                     break;
-//             }
-//         }  
-//         else
-//         {
-//             puts("b");
-//         }
-
-
-//             // if (0 == strncmp(buffer, "Finish", 6))
-//             // {
-//             //     printf("\nAlert! Communication with server terminated...\n");
-//             //     break;
-//             // }
-//     }
-// }
-
-// void process_listen(port)
-// {
-// }
+int randint(int max)
+{
+    return rand() % 1000;
+}

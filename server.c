@@ -20,7 +20,7 @@
 
 struct client {
     int socket;
-    char *alias;
+    char alias[30];
     int groups[2];
     int port_no;
     int available;
@@ -51,10 +51,9 @@ int main(int argc, char *argv[])
     {
         client_socket[i] = 0;
         clients[i].socket = 0;
-        clients[i].available = 0;
         clients[i].groups[0] = 0;
         clients[i].groups[1] = 0;
-        clients[i].available = 0;
+        clients[i].available = -1; // unreachable
         // clients[i].alias = "user";
     }
       
@@ -77,7 +76,7 @@ int main(int argc, char *argv[])
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons( PORT );
       
-    //bind the socket to localhost port 8888
+    //bind the socket to localhost, port 60000
     if (bind(master_socket, (struct sockaddr *)&address, sizeof(address))<0) 
     {
         perror("bind failed");
@@ -166,14 +165,10 @@ int main(int argc, char *argv[])
 
                     clients[i].socket = new_socket;
                     clients[i].port_no = *prt;
-                    clients[i].alias = buffer;
-                    clients[i].available = 1; // the client is availabe by default
+                    strcpy(clients[i].alias, buffer);
+                    clients[i].available = 0; // the client is availabe by default
                     
                     printf("Adding %s to list of sockets as %d\n", clients[i].alias, i);
-
-
-                    // strcat(welcome_message, buffer);
-                    // puts("herrrre");
 
                     //send new connection greeting message
                     if( send(new_socket, buffer, strlen(buffer), 0) != strlen(buffer) ) 
@@ -209,10 +204,9 @@ int main(int argc, char *argv[])
                     client_socket[i] = 0;
                     clients[i].port_no = 0;
                     clients[i].socket = 0;
-                    clients[i].available = 0;
                     clients[i].groups[0] = 0;
                     clients[i].groups[1] = 0;
-                    clients[i].available = 1; // the client becomes unavailable
+                    clients[i].available = -1; // the client does not exist
 
                     online_count--;
                 }
@@ -232,62 +226,53 @@ int main(int argc, char *argv[])
                     {
                         if (buffer[1] == '@') // retrieves all available users
                         {
-                            char *peer_message;
+                            char client_list[BUF_SIZE];
 
                             if (online_count == 1) // Only one user is online 
                             {
-                                peer_message = "No Peers Available\n";
-
-                                if(send(sd , peer_message , strlen(peer_message), 0 ) != strlen(peer_message))
-                                {
-                                    puts("failed");
-                                }
-                                break;
+                                strcpy(client_list, "No Peers Available\n");
                             }
                             else
                             {                            
                                 int j = 0;
-                                char client_list[BUF_SIZE] = "Available Clients\n\tCommand\tUser\n";
+                                
+                                strcpy(client_list, "Available Clients\n\tCommand\tUser\n");
 
                                 for (j = 0; j < max_clients; j++)
                                 {
 
-                                    if (clients[j].port_no != 0 && clients[i].socket == clients[j].socket)
+                                    if (clients[j].port_no != 0 && clients[j].available == 0)
                                     {
                                         char client_id[2];
-                                        char *sig, *tab, *nl;
                                         
-                                        sig = "@";
-                                        tab = "\t";
-                                        nl = "\n";
-
                                         sprintf(client_id, "%d", j);
                                         
                                         // creates list to display
-                                        strcat(client_list, tab); 
-                                        strcat(client_list, sig);
+                                        strcat(client_list, "\t"); 
+                                        strcat(client_list, "@+");
                                         strcat(client_list, client_id);
-                                        strcat(client_list, tab); 
+                                        strcat(client_list, "\t"); 
                                         strcat(client_list, clients[j].alias);
-                                        strcat(client_list, nl);
+                                        strcat(client_list, "\n");
                                     }      
                                 }
-                                write(sd, client_list, sizeof(client_list));               
                             }
-
-                             
+                            if(send(sd , client_list , strlen(client_list), 0 ) != strlen(client_list))
+                            {
+                                puts("failed");
+                            }
                         }
                         else if (buffer[1] == '+') // attempts to create new peer<->peer connection
                         {
                             int j = 2, index, count = 0;
-                            char client_index[2], client_listening[10], *response;
+                            char client_index[2], client_listening[10], response[BUF_SIZE];
 
                             int size = strlen(buffer);
                             printf("Sent = %s and its length is %d\n", buffer, size );
 
                             // gets the index of the client to connect to from the server
                             while(buffer[j] != '|')
-                            {
+                            {                                
                                 client_index[count] = buffer[j];
                                 count++;
                                 j++; 
@@ -295,33 +280,57 @@ int main(int argc, char *argv[])
 
                             // converts the users index from string to integer
                             index = atoi(client_index);
+
+                            puts("here");
  
-                            if (clients[index].port_no == 0) // checks if the client exists
+                            if (clients[index].available == -1) // checks if the client exists
                             {
-                               response = "Client does not exist (enter @@ for list of clients)\n";
+                               strcpy(response, "Client does not exist (enter @@ for list of clients)\n");
+
+                               if(send(sd, response , strlen(response), 0 ) != strlen(response))
+                                {
+                                    puts("failed");
+                                }
+                                puts("here-here-here");
                             }
-                            else if(clients[index].available == 0) // checks if client is available
+                            else if(clients[index].available > 0) // checks if client is available
                             {
-                                response = "Client is currently unavailable, Please try again later\n";
+                                strcpy(response, "Client is currently unavailable, Please try again later\n");
+
+                                if(send(sd, response , strlen(response), 0 ) != strlen(response))
+                                {
+                                    puts("failed");
+                                }
+                                puts("server-server");
                             }
                             else // attempts to contact client
                             {
+                                char index_to_string[2], port_to_string[10];
+
                                 count = 0;
                                 j++; // index of the port number in the buffer
 
-                                // retrieves the port number the client is listening on
+                                // retrieves the port number the client is listening on (default is 50000)
                                 while (buffer[j] != '|')
                                 {
                                     client_listening[count] = buffer[j];
                                 }
 
-                                
+                                sprintf(index_to_string, "%d", i);
 
-                                if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
+                                response = "@+";                                
+                                strcat(response, index_to_string);
+                                strcat(response, "|");
+                                strcat(response, port_to_string);
+                                strcat(response, "|");
+
+                                if(send(clients[index].socket, response , strlen(response), 0 ) != strlen(response))
                                 {
                                     puts("failed");
                                 }
+                                clients[i].available = 1; // client is now 'busy'
                             }
+                            puts(response);
 
                         }
                         else if (buffer[1] == '-') // rejects peer connections
@@ -361,18 +370,18 @@ int main(int argc, char *argv[])
                         }
                         else if (buffer[1] == '+') // join the groups
                         {
-                            char *group_message;
+                            char group_message[BUF_SIZE];
                             
                             if (buffer[2] == '1')
                             {
                                 if (clients[i].groups[0] == 0) // Fun Group
                                 {
                                     clients[i].groups[0] = 1;
-                                    group_message = "Joined Fun Group";
+                                    strcpy(group_message, "Joined Fun Group");
                                 }
                                 else
                                 {
-                                    group_message = "Already in the Fun Group";
+                                    strcpy(group_message, "Already in the Fun Group");
                                 }
                             }
                             else if (buffer[2] == '2') // Work Group
@@ -380,16 +389,16 @@ int main(int argc, char *argv[])
                                 if (clients[i].groups[1] == 0)
                                 {
                                     clients[i].groups[1] = 1;
-                                    group_message = "Joined Work Group";
+                                    strcpy(group_message, "Joined Work Group");
                                 }
                                 else
                                 {
-                                    group_message = "Already in the Work Group";
+                                    strcpy(group_message, "Already in the Work Group");
                                 }
                             }
                             else
                             {
-                                group_message = "Invalid Option";
+                                strcpy(group_message, "Invalid Option");
                             }
 
                             if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
@@ -440,6 +449,7 @@ int main(int argc, char *argv[])
                             int j, index = 0;
                             char broadcast_message[BUF_SIZE];
                             char *group_message;
+
                             group_message = "You arent in this group\n";
 
                             if (buffer[2] == '1') // Fun Group
@@ -463,7 +473,7 @@ int main(int argc, char *argv[])
                                     {
                                         if (clients[j].port_no != 0 && clients[i].socket != clients[j].socket)
                                         {
-                                            if(send(clients[j].socket, broadcast_message , strlen(broadcast_message), 0 ) != strlen(broadcast_message))
+                                            if(send(clients[j].socket, buffer , strlen(buffer), 0 ) != strlen(buffer))
                                             {
                                                 puts("failed");
                                             }   

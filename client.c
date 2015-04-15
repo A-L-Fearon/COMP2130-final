@@ -254,9 +254,12 @@ void main(int argc, char *argv[])
                     // creates tcp connection
                     address.sin_family = AF_INET;
                     address.sin_addr.s_addr = INADDR_ANY;
+
                     address.sin_port = sender.portno;
 
-                    // bind socket to local host, port 50000
+                    //address.sin_port = sender.portno;
+
+                    // bind socket to local host, port
                     if (bind(peer_socket, (struct sockaddr *)&address, sizeof(address))<0) 
                     {
                         perror("bind failed");

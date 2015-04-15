@@ -21,7 +21,7 @@
 struct client {
     int socket;
     char *alias;
-    int group;
+    int groups[2];
     int port_no;
     int available;
 };
@@ -30,7 +30,7 @@ struct client {
 
 int main(int argc, char *argv[])
 {
-	int opt = TRUE;
+	int opt = TRUE, online_count = 0;
     int master_socket , addrlen , new_socket , client_socket[30] , max_clients = 30 , activity, i , valread , sd;
     int max_sd;
     struct sockaddr_in address;
@@ -51,6 +51,9 @@ int main(int argc, char *argv[])
     {
         client_socket[i] = 0;
         clients[i].socket = 0;
+        clients[i].available = 0;
+        clients[i].groups[0] = 0;
+        clients[i].groups[1] = 0;
         clients[i].available = 0;
         // clients[i].alias = "user";
     }
@@ -164,6 +167,7 @@ int main(int argc, char *argv[])
                     clients[i].socket = new_socket;
                     clients[i].port_no = *prt;
                     clients[i].alias = buffer;
+                    clients[i].available = 1; // the client is availabe by default
                     
                     printf("Adding %s to list of sockets as %d\n", clients[i].alias, i);
 
@@ -180,6 +184,8 @@ int main(int argc, char *argv[])
                     break;
                 }
             }
+
+            online_count++;
         }
           
         //else its some IO operation on some other socket :)
@@ -202,14 +208,22 @@ int main(int argc, char *argv[])
                     // close( sd );
                     client_socket[i] = 0;
                     clients[i].port_no = 0;
+                    clients[i].socket = 0;
+                    clients[i].available = 0;
+                    clients[i].groups[0] = 0;
+                    clients[i].groups[1] = 0;
+                    clients[i].available = 1; // the client becomes unavailable
+
+                    online_count--;
                 }
                   
                 //Echo back the message that came in
                 else
                 {
                     //set the string terminating NULL byte on the end of the data read
- 
-                    //buffer[valread] = '\0';
+
+                    buffer[valread] = '\0';
+
                     // buffer[valread] = '\0';
                     // send(sd , buffer , strlen(buffer) , 0 );
                     // int j =  sizeof(buffer);
@@ -220,122 +234,296 @@ int main(int argc, char *argv[])
                     printf("%d truth \n", buffer[0] == 'x');
                     if (buffer[0] == 'x') // peer to peer options
                     {
-                    	puts("yupu");
-                        if (buffer[1] == '@') // retrieves all users
+
+                        if (buffer[1] == '@') // retrieves all available users
                         {
-                            int j = 0;
-                            char client_list[BUF_SIZE] = "Available Clients\nCommand\tUser\n";
+                            char *peer_message;
 
-                            for (j = 0; j < max_clients; j++)
+                            if (online_count == 1) // Only one user is online 
                             {
+                                peer_message = "No Peers Available\n";
 
-                                if (clients[j].socket != 0)
+                                if(send(sd , peer_message , strlen(peer_message), 0 ) != strlen(peer_message))
                                 {
-                                    char client_id[2];
-                                    char *sig, *tab, *nl;
-                                    
-                                    sig = "@";
-                                    tab = "\t";
-                                    nl = "\n";
-
-                                    // if (j < 10)
-                                    // {
-                                    //     client_id[0] = j;
-                                    // }
-                                    // else
-                                    // {
-                                    //     client_id[0] = j / 10;
-                                    //     client_id[1] = j % 10;
-                                    // }
-
-                                    // sprintf(client_id,"%d", j);
-
-                                    puts("e");
-                                    // strcat(client_list, sig);
-                                    puts("a");
-                                    // strcat(client_list, client_id);
-                                    puts("b");
-                                    // strcat(client_list, tab);
-
-                                    // strcat(client_list, clients[j].alias);
-                                    // strcat(client_list, nl);
-
-                                }      
-                                write(sd, client_list, sizeof(client_list));
-                            }
-                            
-                        }
-                        else if (buffer[2] == '+')
-                        {
-                            int j, peerNum = 0;
-                            char num[4];
-
-                            for (j = 2; j < strlen(buffer); j++)
-                            {
-                                if (buffer[j] != '@');
-                                {
-                                    num[peerNum] = buffer[j];
-                                    peerNum++;
+                                    puts("failed");
                                 }
-                                
-                                // send request to connect to client
+                                break;
                             }
+                            else
+                            {                            
+                                int j = 0;
+                                char client_list[BUF_SIZE] = "Available Clients\n\tCommand\tUser\n";
+
+                                for (j = 0; j < max_clients; j++)
+                                {
+
+                                    if (clients[j].port_no != 0 && clients[i].socket == clients[j].socket)
+                                    {
+                                        char client_id[2];
+                                        char *sig, *tab, *nl;
+                                        
+                                        sig = "@";
+                                        tab = "\t";
+                                        nl = "\n";
+
+                                        sprintf(client_id, "%d", j);
+                                        
+                                        // creates list to display
+                                        strcat(client_list, tab); 
+                                        strcat(client_list, sig);
+                                        strcat(client_list, client_id);
+                                        strcat(client_list, tab); 
+                                        strcat(client_list, clients[j].alias);
+                                        strcat(client_list, nl);
+                                    }      
+                                }
+                                write(sd, client_list, sizeof(client_list));               
+                            }
+
+                             
+                        }
+                        else if (buffer[1] == '+') // attempts to create new peer<->peer connection
+                        {
+                            int j = 2, index, count = 0;
+                            char client_index[2], client_listening[10], *response;
+
+                            int size = strlen(buffer);
+                            printf("Sent = %s and its length is %d\n", buffer, size );
+
+                            // gets the index of the client to connect to from the server
+                            while(buffer[j] != '|')
+                            {
+                                client_index[count] = buffer[j];
+                                count++;
+                                j++; 
+                            }
+
+                            // converts the users index from string to integer
+                            index = atoi(client_index);
+ 
+                            if (clients[index].port_no == 0) // checks if the client exists
+                            {
+                               response = "Client does not exist (enter @@ for list of clients)\n";
+                            }
+                            else if(clients[index].available == 0) // checks if client is available
+                            {
+                                response = "Client is currently unavailable, Please try again later\n";
+                            }
+                            else // attempts to contact client
+                            {
+                                count = 0;
+                                j++; // index of the port number in the buffer
+
+                                // retrieves the port number the client is listening on
+                                while (buffer[j] != '|')
+                                {
+                                    client_listening[count] = buffer[j];
+                                }
+
+                                
+
+                                if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
+                                {
+                                    puts("failed");
+                                }
+                            }
+
+                        }
+                        else if (buffer[1] == '-') // rejects peer connections
+                        {
+
                         }
                     }
                     else if (buffer[0] == '#') // broadcast
                     {
+                        char *group_message;
+                        group_message = "GROUP OPTIONS\n\tCommand\tOption\n";
+
                         if (buffer[1] == '#') // gets broadcast option
                         {
+                            if (clients[i].groups[0] == 0)
+                            {
+                                strcat(group_message, "\t#+1\tJoin Fun Group\n");
+                            }
+                            else
+                            {
+                                strcat(group_message, "\t#-1\tLeave Fun Group\n\n");
+                            }
 
+                            if (clients[i].groups[1] == 0)
+                            {
+                                strcat(group_message, "\t#+2\tJoin Work Group\n");
+                            }
+                            else
+                            {                                
+                                strcat(group_message, "\t#+2\tJoin Work Group\n\n");
+                            }
+
+                            if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
+                            {
+                                puts("failed");
+                            }
                         }
-                        else if (buffer[1] == '+') // join the group
+                        else if (buffer[1] == '+') // join the groups
                         {
+                            char *group_message;
+                            
+                            if (buffer[2] == '1')
+                            {
+                                if (clients[i].groups[0] == 0) // Fun Group
+                                {
+                                    clients[i].groups[0] = 1;
+                                    group_message = "Joined Fun Group";
+                                }
+                                else
+                                {
+                                    group_message = "Already in the Fun Group";
+                                }
+                            }
+                            else if (buffer[2] == '2') // Work Group
+                            {
+                                if (clients[i].groups[1] == 0)
+                                {
+                                    clients[i].groups[1] = 1;
+                                    group_message = "Joined Work Group";
+                                }
+                                else
+                                {
+                                    group_message = "Already in the Work Group";
+                                }
+                            }
+                            else
+                            {
+                                group_message = "Invalid Option";
+                            }
 
+                            if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
+                            {
+                                puts("failed");
+                            }
                         }
                         else if (buffer[1] == '-') // leave group
                         {
+                            char *group_message;
+                            
+                            if (buffer[2] == '1')
+                            {
+                                if (clients[i].groups[0] != 0) // Fun Group
+                                {
+                                    clients[i].groups[0] = 0;
+                                    group_message = "Left Fun Group";
+                                }
+                                else
+                                {
+                                    group_message = "You aren't in the Fun Group";
+                                }
+                            }
+                            else if (buffer[2] == '2') // Work Group
+                            {
+                                if (clients[i].groups[1] != 0)
+                                {
+                                    clients[i].groups[1] = 0;
+                                    group_message = "Joined Work Group";
+                                }
+                                else
+                                {
+                                    group_message = "You aren't in the Work Group";
+                                }
+                            }
+                            else
+                            {
+                                group_message = "Invalid Option";
+                            }
 
+                            if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
+                            {
+                                puts("failed");
+                            }
                         }
-                        else // broadcase to the specified group the preceeding message
+                        else if (buffer[1] == '=')// broadcase to the specified group the preceeding message
                         {
-                            //int grp = atoi(buffer[1]); 
+                            int j, index = 0;
+                            char broadcast_message[BUF_SIZE];
+                            char *group_message;
+                            group_message = "You arent in this group\n";
+
+                            if (buffer[2] == '1') // Fun Group
+                            {
+                                if (clients[i].groups[0] == 0) // Not in the group
+                                {
+                                    if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
+                                    {
+                                        puts("failed");
+                                    }
+                                    break;
+                                }
+                                else // In the group
+                                {
+                                    for (j = 3; j < strlen(buffer); j++) // gets the message sent
+                                    {
+                                        broadcast_message[index] = buffer[j];
+                                    }
+
+                                    for (j = 0; j < max_clients; j++) // send it to all clients
+                                    {
+                                        if (clients[j].port_no != 0 && clients[i].socket != clients[j].socket)
+                                        {
+                                            if(send(clients[j].socket, broadcast_message , strlen(broadcast_message), 0 ) != strlen(broadcast_message))
+                                            {
+                                                puts("failed");
+                                            }   
+                                        }
+                                    }
+                                }
+                            }
+                            else if (buffer[2] == '2')
+                            {
+                                if (clients[i].groups[1] == 0) // Not in the group
+                                {
+                                    if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
+                                    {
+                                        puts("failed");
+                                    }
+                                    break;
+                                }
+                                else // In the group
+                                {
+                                    for (j = 3; j < strlen(buffer); j++) // gets the message sent
+                                    {
+                                        broadcast_message[index] = buffer[j];
+                                    }
+
+                                    for (j = 0; j < max_clients; j++) // send it to all clients
+                                    {
+                                        if (!clients[j].port_no || clients[i].socket != clients[i].socket)
+                                        {
+                                            if(send(clients[j].socket, broadcast_message , strlen(broadcast_message), 0 ) != strlen(broadcast_message))
+                                            {
+                                                puts("failed");
+                                            }   
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            char *group_message;
+                            group_message = "Lul what did you enter";
+
+                            if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
+                            {
+                                puts("failed");
+                            }
                         }
                     }
 
-                    //if ((valread = read( sd , buffer, 1024)) == 'hello'){
-                    //if(strcmp(buffer,"hello") == 0){
-                    //	send(sd, "worked", strlen(buffer) , 0 );
-                    //}
+
                     //int test = (strcmp(buffer,"hello"));
                     if(send(sd , buffer , strlen(buffer), 0 ) != strlen(buffer)){
                     	puts("failed");
                     }
                     puts(buffer);
-                    //send(sd , buffer , strlen(buffer) , 0 );
-                    //puts("hey");
-                    // if (buffer[0] == '#') // set username and configurations
-                    // {
-                    //     if (buffer[1] == '0')
-                    //     {
-                    //         int count = 0;
-
-                    //         for (j = 2; j < strlen(buffer); j++)
-                    //         {
-                    //             clients[i].alias[count] = buffer[j];   
-                    //         }
-
-                    //         if (strcmp(clients[i].alias, "user") == 0)
-                    //         {
-                    //             char user_count[2];
-                    //             sprintf(user_count, "%d",i);
-                    //             strcat(clients[i].alias, user_count);
-                    //         }
-
-                    //         // the user is now connected, return their username
-                    //         printf("%s", clients[i].alias);    
-                    //         send(clients[i].socket, clients[i].alias , strlen(clients[i].alias ), 0);
-                    //     }
-                    // }
                 }
             }
         }

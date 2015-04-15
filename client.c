@@ -1,9 +1,11 @@
 
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/wait.h>
 #include <netdb.h>
 #include <errno.h>
 #include <string.h>
@@ -14,7 +16,8 @@
 #define BUFFER_SIZE 1024
 #define TRUE        1
 #define FALSE       0
-#define PORT        60000
+#define SERVER_PORT "60000"
+#define PEER_PORT   "50000"
 #define MAX_CLIENTS 30
 #define GRP_WORK    2
 #define GRP_FUN     3
@@ -24,7 +27,7 @@
 
 struct client {
     char *alias;
-    int group;
+    int groups[2];
     int portno;
     int listening;
     int sockfd;
@@ -42,7 +45,8 @@ void main(int argc, char *argv[])
 {
     fd_set readfds;
 
-    struct sockaddr_in address;
+
+    struct sockaddr_in address; // used to creat peer to peer
     struct sockaddr_in serv_addr;
     struct hostent *server;
 
@@ -53,7 +57,7 @@ void main(int argc, char *argv[])
     char bytes_recv[BUFFER_SIZE];
 
     int opt = TRUE, master_socket , addrlen , new_socket, activity, i , valread , sd, max_sd;
-    int sockfd, portno, n, initial = 1, rc;
+    int sockfd, portno, n, initial = 1, rc, peer_socket;
 
     if ((server = gethostbyname("localhost")) == NULL)
     {   
@@ -64,9 +68,10 @@ void main(int argc, char *argv[])
     sender.listening = 0; // currently this user is not activelty listening
     sender.alias = "user";
     sender.portno = 0;
-    sender.group = 0;
+    sender.groups[0] = 0;
+    sender.groups[1] = 0;
 
-    portno = atoi("60000");
+    portno = atoi(SERVER_PORT);
 
     if ((sender.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
@@ -137,14 +142,16 @@ void main(int argc, char *argv[])
     bzero(buffer, BUFFER_SIZE); // resets buffer          
     bzero(data, BUFFER_SIZE); // resets buffer
 
-    printf("Select a command\n");
-    printf("Command\t Option\n");
-    puts("#\tGROUPS");        
-    puts("@\tPRIVATE");        
+    printf("Main Menu Options\n");
+    printf("\tCommand\t Option\n");
+    puts("\t##\tGROUPS");        
+    puts("\t@@\tPRIVATE");        
     
 
     while (TRUE)
     {
+        // printf("user@user$ ");
+        // fflush(stdout);
 
     // clear the socket set
         FD_ZERO(&readfds);
@@ -166,30 +173,18 @@ void main(int argc, char *argv[])
         if (select(sender.sockfd + 1, &readfds, NULL, NULL, NULL) < 0) 
         {
             printf("select error");
-            continue;
+            // continue;
         }
 
         if (FD_ISSET(sender.sockfd, &readfds)) // receiving incomming data
         {
-
-            //bytes_recv = recv(sender.sockfd, recv, 100, 0);
-
-            //printf("%s test \n", bytes_recv);
-
-            //if (read(sender.sockfd, recv, 1024))
-            //{
-            //    printf("%s\n", recv);
-            //}
-            //printf("%s\n here \n", recv);
-        //}
-        //printf("%s fewfwe \n ", &readfds);
-        //if (FD_ISSET(0, &readfds)) // handles user input
-
-            // bzero(buffer, BUFFER_SIZE); // resets buffer 
-
             if (read(sender.sockfd, buffer, (BUFFER_SIZE - 1)) < 0)
             {
                 printf("Errror");
+            }
+            if (buffer[0] == '@') // someone is initiating a connection
+            {
+                printf("Some is trying to connect with you, enter '@y' to accept\n");
             }
             puts(buffer);
         }
@@ -202,30 +197,71 @@ void main(int argc, char *argv[])
 
             int s = strlen(buffer);
             // printf("CLient %s length(%d)\n", buffer, s);
-            if (strncmp(buffer, "#", 1) == 0) // group calls
+            if (buffer[0] == '#') // group calls
             {
-                if (strlen(buffer) == 1)
+                if (buffer[1] == '#')
                 {
                     printf("BROADCAST TO GROUPS");
-
-
                 }
-
+                write(sender.sockfd, buffer, strlen(buffer));
             }
-
-
-            if (strncmp(buffer, "@@", 1) == 0) // peer to peer calls
+            else if (buffer[0] == '@')
             {
-                if (strlen(buffer) == 3) // REQUESTS THE  list of avaliable peers
+                if (buffer[1] == '@')
+                {
+                    printf("Requesting list of peers...\n");
+                    write(sender.sockfd, buffer, strlen(buffer));
+                }
+                else if (buffer[1] == '+')
+                {
+                    printf("Attempting to create session....\n");
+
+                    if ((peer_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+                    {
+                        puts("[ERROR] Failed to create socker\n");
+                        continue;
+                    }
+
+                    // creates tcp connection
+                    address.sin_family = AF_INET;
+                    address.serv_addr.s_addr = INADDR_ANY;
+                    address.sin_port = atoi(PEER_PORT);
+
+                    // bind socket to local host, port 50000
+                    if (bind(master_socket, (struct sockaddr *)&address, sizeof(address))<0) 
+                    {
+                        perror("bind failed");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    strcat(buffer, "|"); //
+                    // strcat(buffer, portno) // attach your port number
+
+
+                    write(sender.sockfd, buffer, strlen(buffer));
+                }
+                else
                 {
                     write(sender.sockfd, buffer, strlen(buffer));
                 }
-
             }
             else
             {
                 write(sender.sockfd, buffer, strlen(buffer));
             }
+
+            // if (strncmp(buffer, "@", 1) == 0) // peer to peer calls
+            // {
+            //     if (strlen(buffer) == 3) // REQUESTS THE  list of avaliable peers
+            //     {
+            //         write(sender.sockfd, buffer, strlen(buffer));
+            //     }
+
+            // }
+            // else
+            // {
+            //     write(sender.sockfd, buffer, strlen(buffer));
+            // }
         }
 
         // if (FD_ISSET(0, &readfds)) // handles user input

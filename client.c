@@ -73,6 +73,7 @@ void main(int argc, char *argv[])
         fprintf(stderr, "Error opening socket\n");
         exit(0);
     }
+    printf("%d\n\n", sender.sockfd);
 
     bzero((char *) &serv_addr, sizeof(serv_addr));
     
@@ -89,11 +90,11 @@ void main(int argc, char *argv[])
     }
 
     // // delete this if anything
-    // if( setsockopt(sender.sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 )
-    // {
-    //     perror("setsockopt");
-    //     exit(EXIT_FAILURE);
-    // }
+    if( setsockopt(sender.sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 )
+    {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
 
 
     bzero(buffer, BUFFER_SIZE); // resets buffer          
@@ -125,11 +126,26 @@ void main(int argc, char *argv[])
     
     
 
+    // clear the socket set
+    FD_ZERO(&readfds);
+
+    // add read socket to set
+    FD_SET(0, &readfds);
+    FD_SET(sender.sockfd, &readfds);
+
+
     bzero(buffer, BUFFER_SIZE); // resets buffer          
     bzero(data, BUFFER_SIZE); // resets buffer
 
+    printf("Select a command\n");
+    printf("Command\t Option\n");
+    puts("#\tGROUPS");        
+    puts("@\tPRIVATE");        
+    
+
     while (TRUE)
     {
+<<<<<<< HEAD
     // clear the socket set
         FD_ZERO(&readfds);
 
@@ -139,6 +155,9 @@ void main(int argc, char *argv[])
         
         bzero(buffer, BUFFER_SIZE); // resets buffer          
         bzero(data, BUFFER_SIZE); // resets buffer
+=======
+        // printf("Enter a command: ");
+>>>>>>> f0350a575d5dfc0ec31d11ed6bd6b91d3d4a2581
 
         activity = select( sender.sockfd + 1, &readfds , NULL , NULL , NULL);
 
@@ -152,33 +171,105 @@ void main(int argc, char *argv[])
 
         if (FD_ISSET(sender.sockfd, &readfds)) // receiving incomming data
         {
+
             //bytes_recv = recv(sender.sockfd, recv, 100, 0);
 
             //printf("%s test \n", bytes_recv);
 
-            if (read(sender.sockfd, recv, 1024))
-            {
-                printf("%s\n", recv);
-            }
+            //if (read(sender.sockfd, recv, 1024))
+            //{
+            //    printf("%s\n", recv);
+            //}
             //printf("%s\n here \n", recv);
-        }
+        //}
         //printf("%s fewfwe \n ", &readfds);
         if (FD_ISSET(0, &readfds)) // handles user input
+
+            // bzero(buffer, BUFFER_SIZE); // resets buffer 
+
+            if (read(sender.sockfd, buffer, (BUFFER_SIZE - 1)) < 0)
+            {
+                printf("Errror");
+            }
+            puts(buffer);
+        }
+        else
+
         {
-            bzero(buffer, BUFFER_SIZE); // resets buffer          
-            bzero(data, BUFFER_SIZE); // resets buffer
+            bzero(buffer, BUFFER_SIZE); // resets buffer 
 
             fgets(buffer, (BUFFER_SIZE - 1), stdin);
 
-            if (write(sender.sockfd, buffer, strlen(buffer)) < 0)
+            int s = strlen(buffer);
+            // printf("CLient %s length(%d)\n", buffer, s);
+            if (strncmp(buffer, "#", 1) == 0) // group calls
             {
-                fprintf(stderr, "Error creating alias\n" );
-                exit(0);
+                if (strlen(buffer) == 1)
+                {
+                    printf("BROADCAST TO GROUPS");
+
+
+                }
+
             }
 
-            //printf("%s\n", buffer);
 
+            if (strncmp(buffer, "@@", 1) == 0) // peer to peer calls
+            {
+                if (strlen(buffer) == 3) // REQUESTS THE  list of avaliable peers
+                {
+                    write(sender.sockfd, buffer, strlen(buffer));
+                }
+
+            }
+            else
+            {
+                write(sender.sockfd, buffer, strlen(buffer));
+            }
         }
+
+        // if (FD_ISSET(0, &readfds)) // handles user input
+        // {
+        //     bzero(buffer, BUFFER_SIZE); // resets buffer 
+
+        //     fgets(buffer, (BUFFER_SIZE - 1), stdin);
+
+        //     int s = strlen(buffer);
+        //     // printf("CLient %s length(%d)\n", buffer, s);
+        //     if (strncmp(buffer, "#", 1) == 0) // group calls
+        //     {
+        //         if (strlen(buffer) == 1)
+        //         {
+        //             printf("BROADCAST TO GROUPS");
+
+
+        //         }
+
+        //     }
+
+        //     if (strncmp(buffer, "@@", 1) == 0) // peer to peer calls
+        //     {
+        //         if (strlen(buffer) == 3) // REQUESTS THE  list of avaliable peers
+        //         {
+        //             write(sender.sockfd, buffer, strlen(buffer));
+        //         }
+
+        //     }
+        //     else
+        //     {
+        //         write(sender.sockfd, buffer, strlen(buffer));
+        //     }
+        //     continue;
+
+        //     // if (write(sender.sockfd, buffer, strlen(buffer)) < 0)
+        //     // {
+        //     //     fprintf(stderr, "Error creating alias\n" );
+        //     //     exit(0);
+        //     // }
+
+        //     // printf("%s\n", buffer);
+
+        // }
 
 
     } // end of connections with client

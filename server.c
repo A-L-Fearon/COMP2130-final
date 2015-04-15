@@ -23,6 +23,7 @@ struct client {
     char *alias;
     int group;
     int port_no;
+    int available;
 };
 
 
@@ -50,6 +51,7 @@ int main(int argc, char *argv[])
     {
         client_socket[i] = 0;
         clients[i].socket = 0;
+        clients[i].available = 0;
         // clients[i].alias = "user";
     }
       
@@ -192,7 +194,6 @@ int main(int argc, char *argv[])
                 //Check if it was for closing , and also read the incoming message
                 if ((valread = read( sd , buffer, 1024)) == 0)
                 {
-
                     //Somebody disconnected , get his details and print
                     getpeername(sd , (struct sockaddr*)&address , (socklen_t*)&addrlen);
                     printf("Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
@@ -206,9 +207,97 @@ int main(int argc, char *argv[])
                 //Echo back the message that came in
                 else
                 {
-                    int j;
                     //set the string terminating NULL byte on the end of the data read
+
                     buffer[valread] = '\0';
+                    // buffer[valread] = '\0';
+                    // send(sd , buffer , strlen(buffer) , 0 );
+                    // int j =  sizeof(buffer);
+                    
+                    // puts(buffer);
+
+                    if (buffer[0] == '@') // peer to peer options
+                    {
+                        if (buffer[1] == '@') // retrieves all users
+                        {
+                            int j = 0;
+                            char client_list[BUF_SIZE] = "Available Clients\nCommand\tUser\n";
+
+                            for (j = 0; j < max_clients; j++)
+                            {
+
+                                if (clients[j].socket != 0)
+                                {
+                                    char client_id[2];
+                                    char *sig, *tab, *nl;
+                                    
+                                    sig = "@";
+                                    tab = "\t";
+                                    nl = "\n";
+
+                                    // if (j < 10)
+                                    // {
+                                    //     client_id[0] = j;
+                                    // }
+                                    // else
+                                    // {
+                                    //     client_id[0] = j / 10;
+                                    //     client_id[1] = j % 10;
+                                    // }
+
+                                    // sprintf(client_id,"%d", j);
+
+                                    puts("e");
+                                    // strcat(client_list, sig);
+                                    puts("a");
+                                    // strcat(client_list, client_id);
+                                    puts("b");
+                                    // strcat(client_list, tab);
+
+                                    // strcat(client_list, clients[j].alias);
+                                    // strcat(client_list, nl);
+
+                                }      
+                                write(sd, client_list, sizeof(client_list));
+                            }
+                            
+                        }
+                        else if (buffer[2] == '+')
+                        {
+                            int j, peerNum = 0;
+                            char num[4];
+
+                            for (j = 2; j < strlen(buffer); j++)
+                            {
+                                if (buffer[j] != '@');
+                                {
+                                    num[peerNum] = buffer[j];
+                                    peerNum++;
+                                }
+                                
+                                // send request to connect to client
+                            }
+                        }
+                    }
+                    else if (buffer[0] == '#') // broadcast
+                    {
+                        if (buffer[1] == '#') // gets broadcast option
+                        {
+
+                        }
+                        else if (buffer[1] == '+') // join the group
+                        {
+
+                        }
+                        else if (buffer[1] == '-') // leave group
+                        {
+
+                        }
+                        else // broadcase to the specified group the preceeding message
+                        {
+                            int grp = atoi(buffer[1]); 
+                        }
+                    }
 
                     //if ((valread = read( sd , buffer, 1024)) == 'hello'){
                     //if(strcmp(buffer,"hello") == 0){

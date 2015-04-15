@@ -208,6 +208,20 @@ void main(int argc, char *argv[])
             }
             if (buffer[0] == '@') // someone is initiating a connection
             {
+                if (buffer[1] == '+')
+                {
+                    char peer_port[BUFFER_SIZE];
+                    int j = 3, count = 0; // begining of the port number
+
+                    while (buffer[j] != '|')
+                    {
+                        printf("%c\n", buffer[j]);
+                        peer_port[count] = buffer[j];
+                        j++;
+                        count++;
+                    }
+                    puts(peer_port);
+                }
                 printf("Some is trying to connect with you, enter '@y' to accept\n");
             }
             puts(buffer);
@@ -238,6 +252,11 @@ void main(int argc, char *argv[])
                 }
                 else if (buffer[1] == '+')
                 {
+                    if (sender.portno != -1)
+                    {
+                        puts("You are already in a p2p connection");
+                        continue;
+                    }
                     strtok(buffer, "\n");
 
                     printf("Attempting to create session....\n");
@@ -254,7 +273,6 @@ void main(int argc, char *argv[])
                     // creates tcp connection
                     address.sin_family = AF_INET;
                     address.sin_addr.s_addr = INADDR_ANY;
-
                     address.sin_port = sender.portno;
 
                     //address.sin_port = sender.portno;

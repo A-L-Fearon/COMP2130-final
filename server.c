@@ -309,34 +309,52 @@ int main(int argc, char *argv[])
                             }
                             else // attempts to contact client
                             {
+                                char ack[BUF_SIZE];
                                 char index_to_string[2], port_to_string[10];
+                                int k;
+
+                                strcpy(ack, "Resquest sent to client");
 
                                 count = 0;
                                 j++; // index of the port number in the buffer
 
-                                // retrieves the port number the client is listening on
-
-                                while (buffer[j] != '|')
+                                // retrieve the port the client is listening on
+                                for (k = j; k < strlen(buffer) - 1; k++)
                                 {
-                                    puts("attmps");
-                                    client_listening[count] = buffer[j];
+                                    client_listening[count] = buffer[k];
+                                    count++;
                                 }
+
+                                // puts(client_listening);
 
                                 sprintf(index_to_string, "%d", i);
 
                                 strcpy(response, "@+");                                
-                                strcat(response, index_to_string);
+                                strcat(response, index_to_string); // index of the sender
                                 strcat(response, "|");
-                                strcat(response, port_to_string);
+                                strcat(response, client_listening); // sender's port number 
                                 strcat(response, "|");
+                                strcat(response, clients[i].alias); // sender's user name
 
+                                // the receiver's avalaialbe attribute is now the requester's port #
+                                clients[index].available = clients[i].port_no; 
+
+                                // the requester's port # is now set to its avalaible attribute to prevent other p2p conncetions
+                                clients[i].available = clients[i].port_no; 
+
+                                // alerts the intended user for p2p messaging
                                 if(send(clients[index].socket, response , strlen(response), 0 ) != strlen(response))
                                 {
                                     puts("failed");
                                 }
-                                clients[i].available = 1; // client is now 'busy'
+                            
+                                // alerts the intended user for p2p messaging
+                                if(send(clients[i].socket, ack, strlen(ack), 0 ) != strlen(ack))
+                                {
+                                    puts("failed");
+                                }
+                            
                             }
-                            puts(response);
 
                         }
                         else if (buffer[1] == '-') // rejects peer connections
@@ -346,25 +364,20 @@ int main(int argc, char *argv[])
                     }
                     else if (buffer[0] == '#') // broadcast
                     {
-                    	puts("group entry");
                         char group_message[BUF_SIZE];
                         
                         strcpy(group_message, "GROUP OPTIONS\n\tCommand\tOption\n");
 
                         if (buffer[1] == '#') // gets broadcast option
                         {
-                        	puts("group level 2");
                             if (clients[i].groups[0] == 0)
                             {
-                            	puts("next");
                                 strcat(group_message, "\t#+1\tJoin Fun Group\n");
-                                puts("after");
                             }
                             else
                             {
                                 strcat(group_message, "\t#-1\tLeave Fun Group\n\n");
                             }
-                            puts("group 2nd if");
                             if (clients[i].groups[1] == 0)
                             {
                                 strcat(group_message, "\t#+2\tJoin Work Group\n");
@@ -373,12 +386,10 @@ int main(int argc, char *argv[])
                             {                                
                                 strcat(group_message, "\t#+2\tJoin Work Group\n\n");
                             }
-                            puts("group 3rd if");
                             if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
                             {
                                 puts("failed");
                             }
-                            puts("group end");
                         }
                         else if (buffer[1] == '+') // join the groups
                         {

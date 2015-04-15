@@ -305,6 +305,8 @@ int main(int argc, char *argv[])
                             }
                             else // attempts to contact client
                             {
+                                
+
                                 char index_to_string[2], port_to_string[10];
 
                                 count = 0;
@@ -313,12 +315,13 @@ int main(int argc, char *argv[])
                                 // retrieves the port number the client is listening on (default is 50000)
                                 while (buffer[j] != '|')
                                 {
+                                    puts("attmps");
                                     client_listening[count] = buffer[j];
                                 }
 
                                 sprintf(index_to_string, "%d", i);
 
-                                response = "@+";                                
+                                strcpy(response, "@+");                                
                                 strcat(response, index_to_string);
                                 strcat(response, "|");
                                 strcat(response, port_to_string);

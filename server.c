@@ -439,7 +439,7 @@ int main(int argc, char *argv[])
                                 if (clients[i].groups[1] != 0)
                                 {
                                     clients[i].groups[1] = 0;
-                                    group_message = "Joined Work Group";
+                                    group_message = "Left Work Group";
                                 }
                                 else
                                 {
@@ -470,29 +470,31 @@ int main(int argc, char *argv[])
                                 {
                                     if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
                                     {
-                                        puts("failed");
+                                        puts("failed to send to group 1");
                                     }
                                     break;
                                 }
                                 else // In the group
                                 {
-                                    for (j = 3; j < strlen(buffer); j++) // gets the message sent
-                                    {
+                                    //for (j = 3; j < strlen(buffer); j++) // gets the message sent
+                                    //{
                                         //strcat(broadcast_message, buffer[j]);
                                         strncpy(broadcast_message,buffer+3, (strlen(buffer)));
                                         puts("--");
                                         puts(broadcast_message);
                                         puts("--");
-                                    }
+                                    //}
 
                                     for (j = 0; j < max_clients; j++) // send it to all clients
                                     {
                                         if (clients[j].port_no != 0 && clients[i].socket != clients[j].socket)
                                         {
-                                            if(send(clients[j].socket, buffer , strlen(buffer), 0 ) != strlen(buffer))
-                                            {
-                                                puts("failed");
-                                            }   
+                                        	if(clients[j].groups[0] == 1){
+	                                            if(send(clients[j].socket, broadcast_message , strlen(buffer), 0 ) != strlen(buffer))
+	                                            {
+	                                                puts("failed to send to group 1");
+	                                            }  
+	                                        } 
                                         }
                                     }
                                 }
@@ -503,28 +505,30 @@ int main(int argc, char *argv[])
                                 {
                                     if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
                                     {
-                                        puts("failed");
+                                        puts("failed to send to group 2 not in group");
                                     }
                                     break;
                                 }
                                 else // In the group
                                 {
-                                    for (j = 3; j < strlen(buffer); j++) // gets the message sent
-                                    {
-                                        broadcast_message[index] = buffer[j];
+                                    //for (j = 3; j < strlen(buffer); j++) // gets the message sent
+                                    //{
+                                        strncpy(broadcast_message,buffer+3, (strlen(buffer)));
                                         puts("--");
                                         puts(broadcast_message);
                                         puts("--");
-                                    }
+                                    //}
 
                                     for (j = 0; j < max_clients; j++) // send it to all clients
                                     {
-                                        if (!clients[j].port_no || clients[i].socket != clients[i].socket)
+                                        if (clients[j].port_no != 0 && clients[i].socket != clients[j].socket)
                                         {
-                                            if(send(clients[j].socket, broadcast_message , strlen(broadcast_message), 0 ) != strlen(broadcast_message))
-                                            {
-                                                puts("failed");
-                                            }   
+                                        	if(clients[j].groups[1] == 1){
+	                                            if(send(clients[j].socket, broadcast_message , strlen(buffer), 0 ) != strlen(buffer))
+	                                            {
+	                                                puts("failed to send to group 2");
+	                                            }  
+	                                        } 
                                         }
                                     }
                                 }

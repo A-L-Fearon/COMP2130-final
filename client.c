@@ -145,7 +145,7 @@ void main(int argc, char *argv[])
 
     while (TRUE)
     {
-<<<<<<< HEAD
+
     // clear the socket set
         FD_ZERO(&readfds);
 
@@ -155,13 +155,13 @@ void main(int argc, char *argv[])
         
         bzero(buffer, BUFFER_SIZE); // resets buffer          
         bzero(data, BUFFER_SIZE); // resets buffer
-=======
+
         // printf("Enter a command: ");
->>>>>>> f0350a575d5dfc0ec31d11ed6bd6b91d3d4a2581
+
 
         activity = select( sender.sockfd + 1, &readfds , NULL , NULL , NULL);
 
-        printf("%d \n", activity);
+        ///printf("%d \n", activity);
 
         if (select(sender.sockfd + 1, &readfds, NULL, NULL, NULL) < 0) 
         {

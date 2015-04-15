@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
                 else
                 {
                     //set the string terminating NULL byte on the end of the data read
-
+ 
                     buffer[valread] = '\0';
                     // buffer[valread] = '\0';
                     // send(sd , buffer , strlen(buffer) , 0 );
@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
                         }
                         else // broadcase to the specified group the preceeding message
                         {
-                            int grp = atoi(buffer[1]); 
+                            //int grp = atoi(buffer[1]); 
                         }
                     }
 

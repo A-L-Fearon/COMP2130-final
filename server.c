@@ -232,9 +232,8 @@ int main(int argc, char *argv[])
                     int test = (strcmp(buffer,"test"));
                     printf("%d <-- \n", test);
                     printf("%d truth \n", buffer[0] == 'x');
-                    if (buffer[0] == 'x') // peer to peer options
+                    if (buffer[0] == '@') // peer to peer options
                     {
-
                         if (buffer[1] == '@') // retrieves all available users
                         {
                             char *peer_message;
@@ -313,7 +312,7 @@ int main(int argc, char *argv[])
                             {
                                 count = 0;
                                 j++; // index of the port number in the buffer
-
+                                char *group_message;
                                 // retrieves the port number the client is listening on
                                 while (buffer[j] != '|')
                                 {
@@ -336,20 +335,24 @@ int main(int argc, char *argv[])
                     }
                     else if (buffer[0] == '#') // broadcast
                     {
+                    	puts("group entry");
                         char *group_message;
                         group_message = "GROUP OPTIONS\n\tCommand\tOption\n";
 
                         if (buffer[1] == '#') // gets broadcast option
                         {
+                        	puts("group level 2");
                             if (clients[i].groups[0] == 0)
                             {
+                            	puts("next");
                                 strcat(group_message, "\t#+1\tJoin Fun Group\n");
+                                puts("after");
                             }
                             else
                             {
                                 strcat(group_message, "\t#-1\tLeave Fun Group\n\n");
                             }
-
+                            puts("group 2nd if");
                             if (clients[i].groups[1] == 0)
                             {
                                 strcat(group_message, "\t#+2\tJoin Work Group\n");
@@ -358,11 +361,12 @@ int main(int argc, char *argv[])
                             {                                
                                 strcat(group_message, "\t#+2\tJoin Work Group\n\n");
                             }
-
+                            puts("group 3rd if");
                             if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
                             {
                                 puts("failed");
                             }
+                            puts("group end");
                         }
                         else if (buffer[1] == '+') // join the groups
                         {
@@ -443,7 +447,7 @@ int main(int argc, char *argv[])
                         else if (buffer[1] == '=')// broadcase to the specified group the preceeding message
                         {
                             int j, index = 0;
-                            char broadcast_message[BUF_SIZE];
+                            char broadcast_message[BUFFER_SIZE];
                             char *group_message;
                             group_message = "You arent in this group\n";
 
@@ -461,7 +465,11 @@ int main(int argc, char *argv[])
                                 {
                                     for (j = 3; j < strlen(buffer); j++) // gets the message sent
                                     {
-                                        broadcast_message[index] = buffer[j];
+                                        //strcat(broadcast_message, buffer[j]);
+                                        strncpy(broadcast_message,buffer+3, (strlen(buffer)));
+                                        puts("--");
+                                        puts(broadcast_message);
+                                        puts("--");
                                     }
 
                                     for (j = 0; j < max_clients; j++) // send it to all clients
@@ -491,6 +499,9 @@ int main(int argc, char *argv[])
                                     for (j = 3; j < strlen(buffer); j++) // gets the message sent
                                     {
                                         broadcast_message[index] = buffer[j];
+                                        puts("--");
+                                        puts(broadcast_message);
+                                        puts("--");
                                     }
 
                                     for (j = 0; j < max_clients; j++) // send it to all clients
@@ -509,7 +520,7 @@ int main(int argc, char *argv[])
                         else
                         {
                             char *group_message;
-                            group_message = "Lul what did you enter";
+                            group_message = "Lul what did you enter \n";
 
                             if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
                             {

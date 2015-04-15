@@ -224,7 +224,7 @@ void main(int argc, char *argv[])
 
                     // creates tcp connection
                     address.sin_family = AF_INET;
-                    address.serv_addr.s_addr = INADDR_ANY;
+                    address.sin_addr.s_addr = INADDR_ANY;
                     address.sin_port = atoi(PEER_PORT);
 
                     // bind socket to local host, port 50000

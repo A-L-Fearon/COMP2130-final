@@ -209,15 +209,18 @@ int main(int argc, char *argv[])
                 {
                     //set the string terminating NULL byte on the end of the data read
  
-                    buffer[valread] = '\0';
+                    //buffer[valread] = '\0';
                     // buffer[valread] = '\0';
                     // send(sd , buffer , strlen(buffer) , 0 );
                     // int j =  sizeof(buffer);
                     
-                    // puts(buffer);
-
-                    if (buffer[0] == '@') // peer to peer options
+                    puts("here");
+                    int test = (strcmp(buffer,"test"));
+                    printf("%d <-- \n", test);
+                    printf("%d truth \n", buffer[0] == 'x');
+                    if (buffer[0] == 'x') // peer to peer options
                     {
+                    	puts("yupu");
                         if (buffer[1] == '@') // retrieves all users
                         {
                             int j = 0;
@@ -303,7 +306,7 @@ int main(int argc, char *argv[])
                     //if(strcmp(buffer,"hello") == 0){
                     //	send(sd, "worked", strlen(buffer) , 0 );
                     //}
-                    int test = (strcmp(buffer,"hello"));
+                    //int test = (strcmp(buffer,"hello"));
                     if(send(sd , buffer , strlen(buffer), 0 ) != strlen(buffer)){
                     	puts("failed");
                     }

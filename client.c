@@ -183,7 +183,7 @@ void main(int argc, char *argv[])
             //printf("%s\n here \n", recv);
         //}
         //printf("%s fewfwe \n ", &readfds);
-        if (FD_ISSET(0, &readfds)) // handles user input
+        //if (FD_ISSET(0, &readfds)) // handles user input
 
             // bzero(buffer, BUFFER_SIZE); // resets buffer 
 

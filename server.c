@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
 
     struct client clients[MAX_CLIENTS];
 
-    char buffer[BUF_SIZE + 1];  //data buffer of 1K
-      
+    char buffer[BUFFER_SIZE + 1];  //data buffer of 1K
+    char holder[BUFFER_SIZE + 1]; 
     //set of socket descriptors
     fd_set readfds;
       
@@ -364,28 +364,31 @@ int main(int argc, char *argv[])
                     }
                     else if (buffer[0] == '#') // broadcast
                     {
-                        char group_message[BUF_SIZE];
+                        char group_message[BUF_SIZE] = "";
                         
-                        strcpy(group_message, "GROUP OPTIONS\n\tCommand\tOption\n");
+                        //strcpy(group_message, "GROUP OPTIONS\n\tCommand\tOption\n");
 
                         if (buffer[1] == '#') // gets broadcast option
                         {
                             if (clients[i].groups[0] == 0)
                             {
-                                strcat(group_message, "\t#+1\tJoin Fun Group\n");
+                                strcat(group_message, "\t#+1\tJoin Fun Group\n\n");
                             }
                             else
                             {
+                            	strcat(group_message, "\t#=1 <<message>>\tBroadcast Message To Fun Group\n");
                                 strcat(group_message, "\t#-1\tLeave Fun Group\n\n");
                             }
                             if (clients[i].groups[1] == 0)
                             {
-                                strcat(group_message, "\t#+2\tJoin Work Group\n");
-                            }
-                            else
-                            {                                
                                 strcat(group_message, "\t#+2\tJoin Work Group\n\n");
                             }
+                            else
+                            {   
+                            	strcat(group_message, "\t#=2 <<message>>\tBroadcast Message To Work Group\n");                             
+                                strcat(group_message, "\t#-2\tLeave Work Group\n\n");
+                            }
+
                             if(send(sd , group_message , strlen(group_message), 0 ) != strlen(group_message))
                             {
                                 puts("failed");
@@ -494,6 +497,8 @@ int main(int argc, char *argv[])
                                         puts("--");
                                         puts(broadcast_message);
                                         puts("--");
+                                        //strncpy(holder, clients[i].alias, strlen(clients[i].alias));
+                                        //puts(holder);
                                     //}
 
                                     for (j = 0; j < max_clients; j++) // send it to all clients
@@ -559,9 +564,9 @@ int main(int argc, char *argv[])
 
 
                     //int test = (strcmp(buffer,"hello"));
-                    if(send(sd , buffer , strlen(buffer), 0 ) != strlen(buffer)){
-                    	puts("failed");
-                    }
+                    //if(send(sd , buffer , strlen(buffer), 0 ) != strlen(buffer)){
+                    // 	puts("failed");
+                    //}
                     puts(buffer);
                 }
             }

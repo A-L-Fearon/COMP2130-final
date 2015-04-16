@@ -113,7 +113,7 @@ void main(int argc, char *argv[])
     printf("*************************************************\n");
     printf("\t\tWelcome to C Chat\t\t\n");
     printf("*************************************************\n");
-    printf("Enter an alias: ");
+    printf("Please Enter An Alias (username): ");
 
     fgets(buffer, (BUFFER_SIZE - 1), stdin);
 
@@ -130,8 +130,8 @@ void main(int argc, char *argv[])
     }
 
     sender.alias = buffer;
-    puts(recv);
-    
+    //puts(recv);
+    printf("\n Welcome %s \n ", recv);
     
 
     // clear the socket set
@@ -146,9 +146,10 @@ void main(int argc, char *argv[])
     bzero(data, BUFFER_SIZE); // resets buffer
 
     printf("Main Menu Options\n");
+    printf("Please follow comands below (Refer to README for more information))\n ");
     printf("\tCommand\t Option\n");
-    puts("\t##\tGROUPS");        
-    puts("\t@@\tPRIVATE");        
+    puts("\t##\t For Available Groups And Group Commands");        
+    puts("\t@@\tFor A List Of Connected Users and Private Msg Commands");        
     
 
     while (TRUE)
@@ -178,7 +179,7 @@ void main(int argc, char *argv[])
 
         // printf("Enter a command: ");
 
-
+        //printf(">");
         activity = select( max_fd + 1, &readfds , NULL , NULL , NULL);
 
         ///printf("%d \n", activity);
@@ -249,7 +250,8 @@ void main(int argc, char *argv[])
             {
                 if (buffer[1] == '#')
                 {
-                    printf("BROADCAST TO GROUPS");
+                    printf("GROUP OPTIONS \n");
+                    printf("-------------- \n");
                 }
                 write(sender.sockfd, buffer, strlen(buffer));
             }

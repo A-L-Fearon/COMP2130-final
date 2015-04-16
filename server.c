@@ -222,10 +222,6 @@ int main(int argc, char *argv[])
                     // send(sd , buffer , strlen(buffer) , 0 );
                     // int j =  sizeof(buffer);
                     
-                    puts("here");
-                    int test = (strcmp(buffer,"test"));
-                    printf("%d <-- \n", test);
-                    printf("%d truth \n", buffer[0] == 'x');
                     if (buffer[0] == '@') // peer to peer options
                     {
                         if (buffer[1] == '@') // retrieves all available users

@@ -26,7 +26,7 @@ int randint(int max);
 // 2 - 
 
 struct client {
-    char *alias;
+    char alias[30];
     int groups[2];
     int portno;
     int listening;
@@ -47,9 +47,11 @@ void main(int argc, char *argv[])
     fd_set readfds;
 
 
-    struct sockaddr_in address; // used to creat peer to peer
+    struct sockaddr_in address, address2; // used to creat peer to peer
     struct sockaddr_in serv_addr;
+    struct sockaddr_in peer_addr;
     struct hostent *server;
+    struct hostent *peer;
 
     char buffer[BUFFER_SIZE];
     char recv[BUFFER_SIZE];
@@ -58,7 +60,7 @@ void main(int argc, char *argv[])
     char bytes_recv[BUFFER_SIZE];
 
     int opt = TRUE, addrlen , new_socket, activity, i , valread , sd, max_sd;
-    int sockfd, portno, n, initial = 1, rc;
+    int peer_sockfd, portno, n, initial = 1, rc;
     int peer_socket = -1; // file descriptor for peer to peer connection
 
     if ((server = gethostbyname("localhost")) == NULL)
@@ -68,11 +70,10 @@ void main(int argc, char *argv[])
     }
 
     sender.listening = 0; // currently this user is not activelty listening
-    sender.alias = "user";
     sender.portno = -1;
     sender.groups[0] = 0;
     sender.groups[1] = 0;
-    sender.peer = -1;
+    sender.peer = -1; // peer's port number
 
     portno = atoi(SERVER_PORT);
 
@@ -97,7 +98,6 @@ void main(int argc, char *argv[])
         exit(0);
     }
 
-    // // delete this if anything
     if( setsockopt(sender.sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 )
     {
         perror("setsockopt");
@@ -132,7 +132,12 @@ void main(int argc, char *argv[])
     sender.alias = buffer;
     //puts(recv);
     printf("\n Welcome %s \n ", recv);
+
+    //strtok(buffer, "\n");
+
     
+    strcpy(sender.alias, buffer);
+    puts(recv);
 
     // clear the socket set
     FD_ZERO(&readfds);
@@ -182,24 +187,25 @@ void main(int argc, char *argv[])
         //printf(">");
         activity = select( max_fd + 1, &readfds , NULL , NULL , NULL);
 
-        ///printf("%d \n", activity);
-
         if (select(sender.sockfd + 1, &readfds, NULL, NULL, NULL) < 0) 
         {
             printf("select error");
             // continue;
         }
 
-        if (FD_ISSET(peer_socket, &readfds))
+        if (peer_socket != -1)
         {
-            if (read(peer_socket, buffer, (BUFFER_SIZE - 1)) < 0)
+            if (FD_ISSET(peer_socket, &readfds))
             {
-                printf("Error read client message\n");
-                continue;
+                if (read(peer_socket, buffer, (BUFFER_SIZE - 1)) < 0)
+                {
+                    printf("Error read client message\n");
+                    continue;
+                }
+                puts(buffer);
             }
-            puts(buffer);
         }
-
+        
         if (FD_ISSET(sender.sockfd, &readfds)) // receiving incomming data
         {
             if (read(sender.sockfd, buffer, (BUFFER_SIZE - 1)) < 0)
@@ -231,14 +237,22 @@ void main(int argc, char *argv[])
                         peer_name[count] = buffer[i];
                         count++;
                     }
-                    printf("%s is trying to private chat with you on port %d", peer_name, port_to_int);
+                    strtok(peer_name, "\n");
+
+                    // saves the alias
+                    strcpy(sender.alias, peer_name); 
+
+                    // saves the peer port number
+                    sender.peer = port_to_int; 
+
+                    printf("%s is trying to private chat with you on port %d\n", peer_name, port_to_int);
+
+                    printf("Enter @y to accept or @n to decline when ready: ");
                 }
-                printf("Some is trying to connect with you, enter '@y' to accept\n");
             }
             puts(buffer);
         }
         else
-
         {
             bzero(buffer, BUFFER_SIZE); // resets buffer 
 
@@ -248,6 +262,11 @@ void main(int argc, char *argv[])
             // printf("CLient %s length(%d)\n", buffer, s);
             if (buffer[0] == '#') // group calls
             {
+                if (sender.portno != -1) 
+                {
+                    puts("Broadcast options not available in p2p");
+                    continue;
+                }
                 if (buffer[1] == '#')
                 {
                     printf("GROUP OPTIONS \n");
@@ -262,9 +281,102 @@ void main(int argc, char *argv[])
                     printf("Requesting list of peers...\n");
                     write(sender.sockfd, buffer, strlen(buffer));
                 }
+                else if (buffer[1] == 'y')
+                {
+                    if (sender.portno != -1) // already in a p2p
+                    {
+                        puts("You are already in a p2p connection");
+                        continue;   
+                    }
+
+                    strtok(buffer, "\n");
+
+                    puts ("Creating p2p connection");
+
+                    if ((peer_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+                    {
+                        puts("[ERROR] Failed to create socker\n");
+                        continue;
+                    }
+
+                    // port #'s will range from 60000 ~ 700000
+                    sender.portno = randint(1000) + 60000;
+
+                    // creates tcp connection
+                    address2.sin_family = AF_INET;
+                    address2.sin_addr.s_addr = INADDR_ANY;
+                    address2.sin_port = sender.portno;
+
+                    // bind socket to local host, port
+                    if (bind(peer_socket, (struct sockaddr *)&address2, sizeof(address2))<0) 
+                    {
+                        perror("bind failed");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    printf("Peer sock %d\nListening for peer on port %d\n", peer_socket, sender.portno);
+
+                    if (listen(peer_socket, 2) < 0)
+                    {
+                        printf("Error listening\n");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    puts("Here");
+
+                    char peer_port[10];
+
+                    sprintf(peer_port, "%d", sender.portno);
+
+                    addrlen = sizeof(address2);
+                    puts("Now waitng for connections ...\n");
+
+                    strcat(buffer, peer_port);
+
+                    write(sender.sockfd, buffer, strlen(buffer)); // alerts server
+
+                    /*
+                    Connects creates socket fd to message client 
+                    */
+
+                    if ((peer_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+                    {
+                        fprintf(stderr, "Error opening socket to peer\n" );
+                        exit(0);
+                    }
+
+                    bzero((char *) &peer_addr, sizeof(peer_addr));
+
+                    peer_addr.sin_family = AF_INET;
+
+                    bcopy((char *)peer->h_addr, (char *)&peer_addr.sin_addr.s_addr, peer->h_length);
+
+                    peer_addr.sin_port = htons(sender.peer);
+
+                    if (connect(peer_sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+                    {
+                        fprintf(stderr, "Error connecting\n");
+                        exit(0);
+                    }
+
+                    if( setsockopt(sender.sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 )
+                    {
+                        perror("setsockopt");
+                        exit(EXIT_FAILURE);
+                    }
+
+                }
+                else if (buffer[1] == 'n')
+                {
+                    if (sender.portno != -1)// already in a p2p
+                    {
+                        puts("You are already in a p2p connection");
+                        continue;   
+                    }
+                }
                 else if (buffer[1] == '+')
                 {
-                    if (sender.portno != -1)
+                    if (sender.portno != -1) // already in a p2p
                     {
                         puts("You are already in a p2p connection");
                         continue;
@@ -322,12 +434,18 @@ void main(int argc, char *argv[])
                 }
                 else
                 {
-                    write(sender.sockfd, buffer, strlen(buffer));
+                    if (sender.portno != -1) 
+                        write(peer_sockfd, buffer, strlen(buffer)); // p2p
+                    else 
+                        write(sender.sockfd, buffer, strlen(buffer)); // client server
                 }
             }
             else
             {
-                write(sender.sockfd, buffer, strlen(buffer));
+                if (sender.portno != -1) 
+                    write(peer_sockfd, buffer, strlen(buffer)); // p2p
+                else 
+                    write(sender.sockfd, buffer, strlen(buffer)); // client server
             }
         }
 

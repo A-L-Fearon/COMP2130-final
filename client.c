@@ -210,8 +210,8 @@ void main(int argc, char *argv[])
             {
                 if (buffer[1] == '+')
                 {
-                    char peer_port[BUFFER_SIZE];
-                    int j = 3, count = 0; // begining of the port number
+                    char peer_port[BUFFER_SIZE], peer_name[BUFFER_SIZE];
+                    int i, j = 3, count = 0, port_to_int; // begining of the port number
 
                     while (buffer[j] != '|')
                     {
@@ -220,7 +220,17 @@ void main(int argc, char *argv[])
                         j++;
                         count++;
                     }
-                    puts(peer_port);
+
+                    port_to_int = atoi(peer_port); // saves the port number
+                    count = 0; // resets the index
+                    j++; // j is in the index for the person's name
+
+                    for (i = j; i < strlen(buffer); i++)
+                    {
+                        peer_name[count] = buffer[i];
+                        count++;
+                    }
+                    printf("%s is trying to private chat with you on port %d", peer_name, port_to_int);
                 }
                 printf("Some is trying to connect with you, enter '@y' to accept\n");
             }

@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
                                 sprintf(index_to_string, "%d", i);
 
                                 strcpy(response, "@+");                                
-                                strcat(response, index_to_string); // index of the sender
+                                // strcat(response, index_to_string); // index of the sender
                                 strcat(response, "|");
                                 strcat(response, client_listening); // sender's port number 
                                 strcat(response, "|");
